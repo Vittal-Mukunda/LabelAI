@@ -110,9 +110,9 @@ class ImageViewer(QLabel):
         if start_rel and end_rel:
             rect = QRectF(start_rel, end_rel).normalized()
             annotation = {
-                "label": self.active_label, 
-                "type": "bbox", 
-                "bbox": [rect.x(), rect.y(), rect.width(), rect.height()]
+                "label": self.active_label,
+                "type": "bbox",
+                "coords": [rect.x(), rect.y(), rect.width(), rect.height()] # Standardized key
             }
             self.annotations.append(annotation)
             self.annotationsChanged.emit()
@@ -124,14 +124,18 @@ class ImageViewer(QLabel):
             self.current_polygon_points = []
             self.update()
             return
-            
+
         relative_points = [self.to_relative_coords(p) for p in self.current_polygon_points]
         self.current_polygon_points = []
         relative_points = [p for p in relative_points if p is not None]
 
         if len(relative_points) > 2:
             points = [[p.x(), p.y()] for p in relative_points]
-            annotation = {"label": self.active_label, "type": "polygon", "points": points}
+            annotation = {
+                "label": self.active_label,
+                "type": "polygon",
+                "coords": points # Standardized key
+            }
             self.annotations.append(annotation)
             self.annotationsChanged.emit()
         self.update()
@@ -144,21 +148,25 @@ class ImageViewer(QLabel):
 
         display_rect = self.get_display_rect()
         painter.drawPixmap(display_rect, self.pixmap)
-        
+
         pen = QPen(QColor(0, 255, 0), 2)
         painter.setPen(pen)
-        
+
         for ann in self.annotations:
-            if ann["type"] == "bbox":
-                p1 = self.to_widget_coords(QPointF(ann["bbox"][0], ann["bbox"][1]))
-                p2 = self.to_widget_coords(QPointF(ann["bbox"][0] + ann["bbox"][2], ann["bbox"][1] + ann["bbox"][3]))
-                painter.drawRect(QRect(p1, p2))
-                painter.drawText(p1.x(), p1.y() - 5, ann["label"])
-            elif ann["type"] == "polygon":
-                points = [self.to_widget_coords(QPointF(p[0], p[1])) for p in ann["points"]]
-                painter.drawPolygon(QPolygonF(points))
+            label = ann.get("label", "N/A")
+            if ann.get("type") == "bbox":
+                coords = ann.get("coords", [])
+                if len(coords) == 4:
+                    p1 = self.to_widget_coords(QPointF(coords[0], coords[1]))
+                    p2 = self.to_widget_coords(QPointF(coords[0] + coords[2], coords[1] + coords[3]))
+                    painter.drawRect(QRect(p1, p2))
+                    painter.drawText(p1.x(), p1.y() - 5, label)
+            elif ann.get("type") == "polygon":
+                coords = ann.get("coords", [])
+                points = [self.to_widget_coords(QPointF(p[0], p[1])) for p in coords]
                 if points:
-                    painter.drawText(points[0].x(), points[0].y() - 5, ann["label"])
+                    painter.drawPolygon(QPolygonF(points))
+                    painter.drawText(points[0].x(), points[0].y() - 5, label)
 
         pen.setColor(QColor(255, 255, 0))
         painter.setPen(pen)
