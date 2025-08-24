@@ -198,8 +198,9 @@ class MainWindow(QMainWindow):
 
             file_filter = "Image Files (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)"
 
+            # ✅ FIX: Explicitly set parent to None to avoid parenting issues with QStackedWidget
             path, _ = QFileDialog.getOpenFileName(
-                self,
+                None,
                 "Open Image",
                 image_dir,
                 file_filter,
