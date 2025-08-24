@@ -57,6 +57,8 @@ class MainWindow(QMainWindow):
         self.annotation_panel = AnnotationPanel()
         # Connect the new signal to its handler
         self.annotation_panel.activeLabelChanged.connect(self.on_active_label_changed)
+        self.annotation_panel.classLabelsChanged.connect(self.save_project_state)
+        self.annotation_panel.annotationsUpdated.connect(self.on_annotations_updated_from_panel)
         
         splitter.addWidget(self.tabs)
         splitter.addWidget(self.annotation_panel)
@@ -161,19 +163,36 @@ class MainWindow(QMainWindow):
             path, _ = QFileDialog.getOpenFileName(self, "Open Image", image_dir, file_filter)
         
         if path and os.path.exists(path):
+            # Prevent opening the same image in multiple tabs
+            for i in range(self.tabs.count()):
+                if self.tabs.widget(i).property("image_path") == path:
+                    self.tabs.setCurrentIndex(i)
+                    return
+
             viewer = ImageViewer()
             viewer.load_image(path)
             viewer.setProperty("image_path", path)
-            viewer.annotationsChanged.connect(lambda: self.update_panel_for_viewer(viewer))
+            # Connect to the new handler that also saves annotations
+            viewer.annotationsChanged.connect(lambda v=viewer: self.on_annotations_changed_in_viewer(v))
+
             self.load_annotations_for_viewer(viewer, path)
             filename = os.path.basename(path)
             self.tabs.addTab(viewer, filename)
             self.tabs.setCurrentWidget(viewer)
-            self.update_panel_for_viewer(viewer)
+            self.on_annotations_changed_in_viewer(viewer) # Initial panel update
 
-    def update_panel_for_viewer(self, viewer):
+    def on_annotations_changed_in_viewer(self, viewer):
+        """Called when annotations are changed in a viewer. Updates panel and saves."""
         if viewer:
             self.annotation_panel.update_annotations(viewer.annotations)
+            self._save_annotations_for_viewer(viewer) # Auto-save
+
+    def on_annotations_updated_from_panel(self, annotations):
+        """Called when annotations are changed from the panel (e.g., deleted)."""
+        viewer = self.tabs.currentWidget()
+        if isinstance(viewer, ImageViewer):
+            viewer.load_annotations(annotations) # This will trigger viewer.update()
+            self._save_annotations_for_viewer(viewer) # Save the change
 
     def save_current_tab_annotations(self):
         active_viewer = self.tabs.currentWidget()
@@ -181,42 +200,82 @@ class MainWindow(QMainWindow):
         self._save_annotations_for_viewer(active_viewer)
 
     def _save_annotations_for_viewer(self, viewer):
-        annotation_dir = self.project_manager.get_annotation_dir()
-        if not annotation_dir: return
+        """Saves annotations for a given viewer widget using the ProjectManager."""
+        if not (viewer and self.project_manager.is_project_active()):
+            return
+
         image_path = viewer.property("image_path")
-        annotations = viewer.annotations
-        filename = os.path.splitext(os.path.basename(image_path))[0] + ".json"
-        save_path = os.path.join(annotation_dir, filename)
-        with open(save_path, "w") as f:
-            json.dump(annotations, f, indent=4)
-        print(f"Annotations saved to {save_path}")
+        if image_path:
+            image_filename = os.path.basename(image_path)
+            self.project_manager.save_annotations(image_filename, viewer.annotations)
+            print(f"Annotations saved for {image_filename}")
 
     def load_annotations_for_viewer(self, viewer, image_path):
-        annotation_dir = self.project_manager.get_annotation_dir()
-        if not annotation_dir: return
-        filename = os.path.splitext(os.path.basename(image_path))[0] + ".json"
-        load_path = os.path.join(annotation_dir, filename)
-        if os.path.exists(load_path):
-            with open(load_path, "r") as f:
-                annotations = json.load(f)
-                viewer.load_annotations(annotations)
-            print(f"Loaded annotations from {load_path}")
+        """Loads annotations for a given viewer widget using the ProjectManager."""
+        if not self.project_manager.is_project_active():
+            return
+
+        image_filename = os.path.basename(image_path)
+        annotations = self.project_manager.load_annotations(image_filename)
+        if annotations:
+            viewer.load_annotations(annotations)
+            print(f"Loaded {len(annotations)} annotations for {image_filename}")
 
     def close_tab(self, index):
+        # Ask to save before closing if there are unsaved changes (optional, but good practice)
+        # For now, we assume auto-save has handled everything.
         widget = self.tabs.widget(index)
         if widget:
             widget.deleteLater()
         self.tabs.removeTab(index)
 
     def run_model(self):
-        pass
+        active_viewer = self.tabs.currentWidget()
+        if not isinstance(active_viewer, ImageViewer):
+            QMessageBox.warning(self, "Error", "Please open an image first.")
+            return
+
+        image_path = active_viewer.property("image_path")
+        if not image_path:
+            QMessageBox.warning(self, "Error", "Could not find the image path for the current tab.")
+            return
+
+        try:
+            new_annotations = self.model_manager.run(image_path)
+            if new_annotations:
+                # --- FIX: Ensure new annotations get the currently active label if they don't have one ---
+                # This is important if the model returns a generic label.
+                for ann in new_annotations:
+                    if 'label' not in ann or not ann['label']:
+                        ann['label'] = self.current_active_label if self.current_active_label else "model_prediction"
+
+                active_viewer.annotations.extend(new_annotations)
+                active_viewer.annotationsChanged.emit() # This will update the panel and save
+                QMessageBox.information(self, "Success", f"Model run complete. Added {len(new_annotations)} new annotation(s).")
+            else:
+                QMessageBox.information(self, "Finished", "Model run complete. No objects detected.")
+        except RuntimeError as e:
+            QMessageBox.critical(self, "Model Error", str(e))
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An unexpected error occurred: {e}")
 
     def load_project_state(self):
         state = self.project_manager.load_state()
         open_files = state.get("open_files", [])
         for file_path in open_files:
-            self.open_image_tab(path=file_path)
+            if os.path.exists(file_path): # Check if file still exists
+                self.open_image_tab(path=file_path)
 
     def closeEvent(self, event):
-        self.save_project_state()
+        """Saves everything before closing the application."""
+        if self.project_manager.is_project_active():
+            # Save annotations for all open tabs
+            for i in range(self.tabs.count()):
+                viewer = self.tabs.widget(i)
+                self._save_annotations_for_viewer(viewer)
+
+            # Save the overall project state (open tabs, labels)
+            self.save_project_state()
+            print("Project saved. Closing application.")
+
         event.accept()
