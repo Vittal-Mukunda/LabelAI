@@ -88,11 +88,19 @@ class MainWindow(QMainWindow):
         tool_action_group.addAction(polygon_action)
         self.tools_menu.addAction(polygon_action)
         self.model_menu = menubar.addMenu("Models")
+        model_action_group = QActionGroup(self)
+        model_action_group.setExclusive(True)
+
         yolo_action = QAction("Use YOLO", self)
+        yolo_action.setCheckable(True)
         yolo_action.triggered.connect(lambda: self.model_manager.set_active_model("YOLO"))
+        model_action_group.addAction(yolo_action)
         self.model_menu.addAction(yolo_action)
+
         sam_action = QAction("Use SAM", self)
+        sam_action.setCheckable(True)
         sam_action.triggered.connect(lambda: self.model_manager.set_active_model("SAM"))
+        model_action_group.addAction(sam_action)
         self.model_menu.addAction(sam_action)
         self.run_menu = menubar.addMenu("Run")
         run_action = QAction("Run Model", self)
@@ -157,8 +165,15 @@ class MainWindow(QMainWindow):
 
     def open_image_tab(self, path=None):
         if path is None:
+            if not self.project_manager.is_project_active():
+                QMessageBox.warning(self, "No Project Active", "Please open or create a project before opening an image.")
+                return
+
             image_dir = self.project_manager.get_image_dir()
-            if not image_dir: return
+            if not image_dir or not os.path.exists(image_dir):
+                 QMessageBox.critical(self, "Error", f"Could not find the 'images' directory for the current project.\nExpected at: {image_dir}")
+                 return
+
             file_filter = "Image Files (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)"
             path, _ = QFileDialog.getOpenFileName(self, "Open Image", image_dir, file_filter)
         
