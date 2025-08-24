@@ -147,3 +147,64 @@ QScrollBar::add-line, QScrollBar::sub-line {
     height: 0;
     width: 0;
 }
+
+/* --------------------------------------------------- */
+/* Welcome Screen :: Modern Look                       */
+/* --------------------------------------------------- */
+
+#WelcomeScreen {
+    background-color: #1A1A1A;
+    font-family: "Baskerville", "Times New Roman", serif;
+}
+
+#WelcomeScreen #container {
+    background-color: #2C2C2E;
+    border: 1px solid #3A3A3C;
+    border-radius: 12px;
+}
+
+#WelcomeScreen #titleLabel {
+    font-size: 32px;
+    font-weight: 600;
+    color: #FFFFFF;
+    margin-bottom: 5px;
+}
+
+#WelcomeScreen #subtitleLabel {
+    font-size: 16px;
+    color: #8E8E93; /* Muted grey */
+    margin-bottom: 20px;
+}
+
+#WelcomeScreen QListWidget {
+    border: 1px solid #3A3A3C;
+    border-radius: 6px;
+    background-color: #1C1C1E;
+    font-size: 15px;
+}
+
+#WelcomeScreen QListWidget::item {
+    padding: 12px;
+}
+
+#WelcomeScreen QPushButton {
+    background-color: #3D3D40;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+}
+
+#WelcomeScreen QPushButton:hover {
+    background-color: #4D4D50;
+}
+
+#WelcomeScreen #primaryButton {
+    background-color: #0A84FF;
+}
+
+#WelcomeScreen #primaryButton:hover {
+    background-color: #0A60FF;
+}

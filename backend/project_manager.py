@@ -76,12 +76,12 @@ class ProjectManager:
     def save_annotations(self, image_filename, annotations):
         """Saves annotations for a specific image to a JSON file."""
         if not self.is_project_active(): return
-
+        
         annotation_dir = self.get_annotation_dir()
         # Create a JSON filename from the image filename, e.g., "cat.jpg" -> "cat.jpg.json"
         annotation_filename = f"{image_filename}.json"
         annotation_path = os.path.join(annotation_dir, annotation_filename)
-
+        
         try:
             with open(annotation_path, 'w') as f:
                 json.dump(annotations, f, indent=4)
