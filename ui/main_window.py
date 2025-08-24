@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
             file_filter = "Image Files (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)"
 
             path, _ = QFileDialog.getOpenFileName(
-                self,
+                self.main_widget,
                 "Open Image",
                 image_dir,
                 file_filter,

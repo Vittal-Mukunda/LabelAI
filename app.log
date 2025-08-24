@@ -1,0 +1,7 @@
+QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-jules'
+Opening existing project 'debug_project'
+DEBUG: open_image_tab called
+DEBUG: project active: True
+DEBUG: image_dir: /app/LabelAI_Projects/debug_project/images
+DEBUG: Calling QFileDialog.getOpenFileName...
+This plugin does not support propagateSizeHints()
