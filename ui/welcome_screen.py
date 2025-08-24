@@ -6,14 +6,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QListWidget,
 from PyQt5.QtCore import Qt, pyqtSignal
 
 class WelcomeScreen(QWidget):
-    # Signal to tell MainWindow which project to open/create
     projectSelected = pyqtSignal(str)
 
     def __init__(self, projects_dir, parent=None):
         super().__init__(parent)
         self.projects_dir = projects_dir
 
-        # --- Layout ---
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
 
@@ -44,7 +42,6 @@ class WelcomeScreen(QWidget):
         self.refresh_project_list()
 
     def refresh_project_list(self):
-        """Scan for existing projects and populate the list."""
         self.project_list.clear()
         if not os.path.exists(self.projects_dir):
             os.makedirs(self.projects_dir)

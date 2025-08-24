@@ -7,7 +7,6 @@ from ui.main_window import MainWindow
 def main():
     app = QApplication(sys.argv)
 
-    # This is the crucial part that loads the style
     try:
         with open("ui/style.qss", "r") as f:
             app.setStyleSheet(f.read())

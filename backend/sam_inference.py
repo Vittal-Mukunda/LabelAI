@@ -1,14 +1,12 @@
 # C:\LabelAI\backend\sam_inference.py
 
 class SAMAdapter:
-    """
-    Adapter for the SAM model. This is the single source of truth for SAM.
-    """
+    """Placeholder for the SAM model inference logic."""
     def infer(self, image_path):
         print(f"Running SAM on {image_path}")
-        # In the future, the real SAM model logic will go here.
+        # This is where real model inference would happen.
         return {
-            "masks": ["mask1"],
+            "masks": ["mask_data_placeholder"],
             "labels": ["object"],
             "scores": [0.88]
         }

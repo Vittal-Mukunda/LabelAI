@@ -71,8 +71,8 @@ class MainWindow(QMainWindow):
         splitter.setSizes([800, 250])
 
         # Set main layout stretch factors
-        main_layout.setStretch(0, 1) # Sidebar
-        main_layout.setStretch(1, 4) # Main splitter
+        main_layout.setStretch(0, 1)  # Sidebar
+        main_layout.setStretch(1, 4)  # Main splitter
 
         menubar = self.menuBar()
         self.file_menu = menubar.addMenu("File")
@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
         save_icon = style.standardIcon(QStyle.SP_DialogSaveButton)
 
         # Connect to open_images (Bug 1 Fix & Feature 1)
-        open_action = QAction(open_icon, "Open Images", self) # Renamed for clarity
+        open_action = QAction(open_icon, "Open Images", self)  # Renamed for clarity
         open_action.triggered.connect(self.open_images)
         self.file_menu.addAction(open_action)
 
@@ -174,10 +174,14 @@ class MainWindow(QMainWindow):
                 return
 
         viewer = ImageViewer()
-        # Fix: Set the active label directly on the new viewer instance
-        # before it's added to the tab widget. This prevents the crash.
+
+        # --- From fix-file-dialog branch (Bug 2 Fix) ---
+        # Set the active label directly on the new viewer instance
         selected_label = self.annotation_panel.get_selected_class_label()
         viewer.set_active_class_label(selected_label)
+        self.set_active_class_label_for_viewer(selected_label)
+
+        # --- From main branch ---
         viewer.load_image(path)
         viewer.setProperty("image_path", path)
         viewer.annotationsChanged.connect(lambda: self.update_panel_for_viewer(viewer))
@@ -203,12 +207,14 @@ class MainWindow(QMainWindow):
 
     def save_current_tab_annotations(self):
         active_viewer = self.tabs.currentWidget()
-        if not active_viewer: return
+        if not active_viewer:
+            return
         self._save_annotations_for_viewer(active_viewer)
 
     def _save_annotations_for_viewer(self, viewer):
         annotation_dir = self.project_manager.get_annotation_dir()
-        if not annotation_dir: return
+        if not annotation_dir:
+            return
         image_path = viewer.property("image_path")
         annotations = viewer.annotations
         filename = os.path.splitext(os.path.basename(image_path))[0] + ".json"
@@ -219,7 +225,8 @@ class MainWindow(QMainWindow):
 
     def load_annotations_for_viewer(self, viewer, image_path):
         annotation_dir = self.project_manager.get_annotation_dir()
-        if not annotation_dir: return
+        if not annotation_dir:
+            return
         filename = os.path.splitext(os.path.basename(image_path))[0] + ".json"
         load_path = os.path.join(annotation_dir, filename)
         if os.path.exists(load_path):
@@ -258,7 +265,7 @@ class MainWindow(QMainWindow):
         image_paths = []
         for i in range(self.image_sidebar.count()):
             item = self.image_sidebar.item(i)
-            path = item.data(1) # Recall we stored the path in data role 1
+            path = item.data(1)  # Recall we stored the path in data role 1
             if path:
                 image_paths.append(path)
 
@@ -277,7 +284,7 @@ class MainWindow(QMainWindow):
         key = event.key()
         # Check for number keys 1-9
         if Qt.Key_1 <= key <= Qt.Key_9:
-            index = key - Qt.Key_0 # Convert key to integer
+            index = key - Qt.Key_0  # Convert key to integer
             self.annotation_panel.select_label_by_index(index)
         else:
             # Pass the event to the parent class to handle other keys

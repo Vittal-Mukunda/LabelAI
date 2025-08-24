@@ -1,12 +1,10 @@
 # C:\LabelAI\backend\yolo_inference.py
 
 class YOLOAdapter:
-    """
-    Adapter for the YOLO model. This is the single source of truth for YOLO.
-    """
+    """Placeholder for the YOLO model inference logic."""
     def infer(self, image_path):
         print(f"Running YOLO on {image_path}")
-        # In the future, the real YOLO model logic will go here.
+        # This is where real model inference would happen.
         return {
             "boxes": [[50, 50, 200, 200]],
             "labels": ["object"],
