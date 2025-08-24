@@ -1,0 +1,146 @@
+/* --------------------------------------------------- */
+/* LabelAI :: Futuristic UI Theme                      */
+/* --------------------------------------------------- */
+
+/* --- Global & Window --- */
+QMainWindow, QWidget {
+    background-color: #121212; /* Obsidian black */
+    color: #EAEAEA;
+    font-family: "Segoe UI", "Roboto", sans-serif;
+    font-size: 14px;
+    border: none;
+}
+
+/* --- Tabs --- */
+QTabWidget::pane {
+    border: 1px solid #222222;
+    background: #191919;
+}
+
+QTabBar::tab {
+    background: transparent;
+    color: #888888;
+    border: none;
+    border-bottom: 2px solid transparent; /* Placeholder for selection indicator */
+    padding: 10px 20px;
+    margin-right: 4px;
+}
+
+QTabBar::tab:hover {
+    color: #EAEAEA;
+}
+
+QTabBar::tab:selected {
+    color: #FFFFFF;
+    background-color: #191919;
+    border-bottom: 2px solid #00BFFF; /* Electric Cyan */
+    font-weight: bold;
+}
+
+/* --- Annotation Panel --- */
+#AnnotationPanel {
+    background-color: #121212;
+    border-left: 1px solid #222222;
+}
+
+#AnnotationPanel QLabel {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 8px;
+    color: #FFFFFF;
+    border-bottom: 1px solid #222222;
+    letter-spacing: 1px; /* Wider spacing for futuristic feel */
+}
+
+/* Annotation List */
+QListWidget {
+    background-color: #191919;
+    color: #CCCCCC;
+    border: none;
+    font-size: 13px;
+}
+
+QListWidget::item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #222222;
+}
+
+QListWidget::item:selected {
+    background-color: rgba(0, 191, 255, 0.1); /* Faded cyan selection */
+    color: #FFFFFF;
+    border-left: 3px solid #00BFFF; /* Accent line on selection */
+}
+
+/* --- Menus --- */
+QMenuBar {
+    background-color: #191919;
+    color: #EAEAEA;
+}
+
+QMenuBar::item {
+    background: transparent;
+    padding: 6px 12px;
+}
+
+QMenuBar::item:selected {
+    background-color: #222222;
+    color: #FFFFFF;
+}
+
+QMenu {
+    background-color: #191919;
+    color: #EAEAEA;
+    border: 1px solid #222222;
+    padding: 5px;
+}
+
+QMenu::item {
+    padding: 8px 20px;
+}
+
+QMenu::item:selected {
+    background-color: #00BFFF;
+    color: #121212;
+}
+
+/* --- Splitter --- */
+QSplitter::handle {
+    background-color: #222222;
+}
+
+QSplitter::handle:hover {
+    background-color: #00BFFF;
+}
+
+QSplitter::handle:horizontal {
+    width: 2px;
+}
+
+QSplitter::handle:vertical {
+    height: 2px;
+}
+
+/* --- Scrollbars --- */
+QScrollBar:vertical, QScrollBar:horizontal {
+    border: none;
+    background: #191919;
+    width: 8px;
+    height: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: #333333;
+    min-height: 20px;
+    min-width: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: #00BFFF;
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+    height: 0;
+    width: 0;
+}
