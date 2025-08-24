@@ -13,6 +13,7 @@ from PyQt5.QtGui import QIcon
 from .image_viewer import ImageViewer
 from .annotation_panel import AnnotationPanel
 from .welcome_screen import WelcomeScreen
+from .image_sidebar import ImageSidebar
 from backend.model_manager import ModelManager
 from backend.project_manager import ProjectManager
 from backend.yolo_inference import YOLOAdapter
@@ -48,15 +49,30 @@ class MainWindow(QMainWindow):
 
     def setup_main_ui(self, parent_widget):
         main_layout = QHBoxLayout(parent_widget)
+
+        # New Image Sidebar (Feature 1)
+        self.image_sidebar = ImageSidebar()
+        self.image_sidebar.imageSelected.connect(self.open_image_in_tab)
+        main_layout.addWidget(self.image_sidebar)
+
         splitter = QSplitter(Qt.Horizontal)
         main_layout.addWidget(splitter)
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
+
+        # Annotation panel setup
         self.annotation_panel = AnnotationPanel()
+        # Connect signal for active label change (Bug 2 Fix)
+        self.annotation_panel.classLabelSelected.connect(self.set_active_class_label_for_viewer)
+
         splitter.addWidget(self.tabs)
         splitter.addWidget(self.annotation_panel)
-        splitter.setSizes([900, 300])
+        splitter.setSizes([800, 250])
+
+        # Set main layout stretch factors
+        main_layout.setStretch(0, 1) # Sidebar
+        main_layout.setStretch(1, 4) # Main splitter
 
         menubar = self.menuBar()
         self.file_menu = menubar.addMenu("File")
@@ -65,8 +81,9 @@ class MainWindow(QMainWindow):
         open_icon = style.standardIcon(QStyle.SP_DialogOpenButton)
         save_icon = style.standardIcon(QStyle.SP_DialogSaveButton)
 
-        open_action = QAction(open_icon, "Open Image", self)
-        open_action.triggered.connect(lambda: self.open_image_tab())
+        # Connect to open_images (Bug 1 Fix & Feature 1)
+        open_action = QAction(open_icon, "Open Images", self) # Renamed for clarity
+        open_action.triggered.connect(self.open_images)
         self.file_menu.addAction(open_action)
 
         save_action = QAction(save_icon, "Save Annotations", self)
@@ -123,30 +140,60 @@ class MainWindow(QMainWindow):
         if isinstance(active_viewer, ImageViewer):
             active_viewer.set_tool(tool_name)
 
-    def open_image_tab(self, path=None):
-        if path is None:
-            image_dir = self.project_manager.get_image_dir()
+    def open_images(self):
+        """
+        Opens a file dialog to select multiple images and adds them to the sidebar.
+        (Fixes Bug 1 and implements part of Feature 1).
+        """
+        image_dir = self.project_manager.get_image_dir()
+        if not image_dir:
+            QMessageBox.warning(self, "Project Error", "Could not find the project's image directory.")
+            return
 
-            if not image_dir:
-                QMessageBox.warning(self, "Project Error", "Could not find the project's image directory.")
+        file_filter = "Image Files (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)"
+        # Use getOpenFileNames to allow multi-selection
+        paths, _ = QFileDialog.getOpenFileNames(self, "Open Images", image_dir, file_filter)
+
+        if paths:
+            self.image_sidebar.clear_images()
+            self.image_sidebar.add_images(paths)
+
+    def open_image_in_tab(self, path):
+        """
+        Opens a single image (selected from the sidebar) in a new tab.
+        (Implements part of Feature 1).
+        """
+        if not (path and os.path.exists(path)):
+            return
+
+        # Prevent opening the same image in multiple tabs
+        for i in range(self.tabs.count()):
+            viewer = self.tabs.widget(i)
+            if viewer.property("image_path") == path:
+                self.tabs.setCurrentIndex(i)
                 return
 
-            file_filter = "Image Files (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)"
+        viewer = ImageViewer()
+        # This is the connection that fixes Bug 2
+        self.set_active_class_label_for_viewer(self.annotation_panel.get_selected_class_label())
+        viewer.load_image(path)
+        viewer.setProperty("image_path", path)
+        viewer.annotationsChanged.connect(lambda: self.update_panel_for_viewer(viewer))
+        self.load_annotations_for_viewer(viewer, path)
 
-            # This is the section that isn't working as expected
-            path, _ = QFileDialog.getOpenFileName(self, "Open Image", image_dir, file_filter)
+        filename = os.path.basename(path)
+        self.tabs.addTab(viewer, filename)
+        self.tabs.setCurrentWidget(viewer)
+        self.update_panel_for_viewer(viewer)
 
-        if path and os.path.exists(path):
-            viewer = ImageViewer()
-            viewer.load_image(path)
-            viewer.setProperty("image_path", path)
-            viewer.annotationsChanged.connect(lambda: self.update_panel_for_viewer(viewer))
-            self.load_annotations_for_viewer(viewer, path)
-
-            filename = os.path.basename(path)
-            self.tabs.addTab(viewer, filename)
-            self.tabs.setCurrentWidget(viewer)
-            self.update_panel_for_viewer(viewer)
+    def set_active_class_label_for_viewer(self, label):
+        """
+        Sets the active class label on the current image viewer.
+        (Fixes Bug 2).
+        """
+        active_viewer = self.tabs.currentWidget()
+        if isinstance(active_viewer, ImageViewer):
+            active_viewer.set_active_class_label(label)
 
     def update_panel_for_viewer(self, viewer):
         if viewer:
@@ -190,25 +237,46 @@ class MainWindow(QMainWindow):
         pass
 
     def load_project_state(self):
+        """
+        Loads the project state, including the list of images for the sidebar.
+        """
         state = self.project_manager.load_state()
-        open_files = state.get("open_files", [])
-        for file_path in open_files:
-            self.open_image_tab(path=file_path)
+        image_paths = state.get("image_paths", [])
+        if image_paths:
+            self.image_sidebar.add_images(image_paths)
+
+        # We don't reopen tabs automatically anymore to avoid clutter.
+        # The user can click thumbnails to open images.
 
     def save_project_state(self):
         if not self.project_manager.is_project_active():
             return
 
-        open_files = []
-        for i in range(self.tabs.count()):
-            viewer = self.tabs.widget(i)
-            path = viewer.property("image_path")
+        # Save the list of all images currently in the sidebar (Feature 1)
+        image_paths = []
+        for i in range(self.image_sidebar.count()):
+            item = self.image_sidebar.item(i)
+            path = item.data(1) # Recall we stored the path in data role 1
             if path:
-                open_files.append(path)
+                image_paths.append(path)
 
-        state_data = {"open_files": open_files}
+        state_data = {"image_paths": image_paths}
         self.project_manager.save_state(state_data)
 
     def closeEvent(self, event):
         self.save_project_state()
         event.accept()
+
+    def keyPressEvent(self, event):
+        """
+        Handles keyboard shortcuts for selecting class labels.
+        (Implements Feature 2).
+        """
+        key = event.key()
+        # Check for number keys 1-9
+        if Qt.Key_1 <= key <= Qt.Key_9:
+            index = key - Qt.Key_0 # Convert key to integer
+            self.annotation_panel.select_label_by_index(index)
+        else:
+            # Pass the event to the parent class to handle other keys
+            super().keyPressEvent(event)
