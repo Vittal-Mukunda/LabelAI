@@ -70,6 +70,12 @@ class ImageViewer(QLabel):
         self.pixmap = QPixmap(path)
         self.update()
 
+    def get_image_details(self):
+        """Returns the image path, width, and height."""
+        if not self.pixmap:
+            return None, 0, 0
+        return self.property("image_path"), self.pixmap.width(), self.pixmap.height()
+
     def load_annotations(self, annotations):
         self.annotations = annotations
         self.update()

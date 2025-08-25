@@ -1,0 +1,17 @@
+{
+    "image_path": "C:\\LabelAI\\LabelAI_Projects\\Box\\images\\WIN_20250703_15_52_12_Pro.jpg",
+    "image_height": 1080,
+    "image_width": 1920,
+    "annotations": [
+        {
+            "label": "Person",
+            "type": "bbox",
+            "points": [
+                574,
+                278,
+                1085,
+                1022
+            ]
+        }
+    ]
+}

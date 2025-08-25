@@ -4,19 +4,20 @@ import os
 import json
 import shutil
 from PyQt5.QtWidgets import (QMainWindow, QAction, QFileDialog, QTabWidget, 
-                             QWidget, QHBoxLayout, QSplitter, QStackedWidget, QMessageBox, QActionGroup, QStyle)
+                             QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSplitter, QStackedWidget, QMessageBox, QActionGroup, QStyle)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 
 from .image_viewer import ImageViewer
 from .annotation_panel import AnnotationPanel
 from .welcome_screen import WelcomeScreen
-from .image_sidebar import ImageSidebar # Import the new sidebar
+from .image_sidebar import ImageSidebar
 from backend.model_manager import ModelManager
 from backend.project_manager import ProjectManager
 from backend.model_database import get_models_for_task
 from backend.yolo_inference import YOLOAdapter
 from backend.sam_inference import SAMAdapter
+from backend import exporter
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -24,9 +25,9 @@ class MainWindow(QMainWindow):
         
         self.project_manager = ProjectManager(base_projects_dir="LabelAI_Projects")
         self.model_manager = ModelManager()
-        # Model registration is now dynamic
         
         self.current_active_label = None
+        self.current_model_info = None
         
         self.setWindowTitle("LabelAI")
         self.resize(1400, 900) # Increased default size for the new layout
@@ -47,11 +48,15 @@ class MainWindow(QMainWindow):
         self.menuBar().setVisible(False)
 
     def setup_main_ui(self, parent_widget):
-        main_layout = QHBoxLayout(parent_widget)
+        # --- NEW LAYOUT WITH EXPORT BUTTON ---
+        # Main vertical layout
+        main_layout = QVBoxLayout(parent_widget)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
         
-        # --- NEW 3-PANEL LAYOUT ---
+        # Top part with the splitter
         main_splitter = QSplitter(Qt.Horizontal)
-        main_layout.addWidget(main_splitter)
+        main_layout.addWidget(main_splitter, 1) # Give splitter stretch factor
 
         # 1. Left Sidebar for Image Previews
         self.image_sidebar = ImageSidebar()
@@ -79,6 +84,18 @@ class MainWindow(QMainWindow):
         main_splitter.addWidget(self.image_sidebar)
         main_splitter.addWidget(work_area_splitter)
         main_splitter.setSizes([200, 1200])
+
+        # Bottom part with the export button
+        export_layout = QHBoxLayout()
+        export_layout.addStretch() # Pushes the button to the right
+        
+        self.export_button = QPushButton("Export")
+        self.export_button.setDisabled(True)
+        self.export_button.setStyleSheet("background-color: #A0A0A0; color: #FFFFFF; padding: 8px 16px; border-radius: 4px;")
+        self.export_button.clicked.connect(self.handle_export)
+        
+        export_layout.addWidget(self.export_button)
+        main_layout.addLayout(export_layout)
         # --- END OF NEW LAYOUT ---
         
         menubar = self.menuBar()
@@ -160,20 +177,25 @@ class MainWindow(QMainWindow):
 
     def activate_model(self, model_info):
         """
-        Activates the selected model by setting the corresponding tool
-        in the current image viewer.
+        Activates the selected model and updates the UI.
         """
-        tool_name = model_info.get('tool')
-        if not tool_name:
-            QMessageBox.information(self, "Info", "This model does not have an associated drawing tool.")
-            return
+        self.current_model_info = model_info
+        print(f"Selected model: {self.current_model_info['name']}")
 
-        active_viewer = self.tabs.currentWidget()
-        if isinstance(active_viewer, ImageViewer):
-            active_viewer.set_tool(tool_name)
-            self.statusBar().showMessage(f"Activated tool: {tool_name}", 3000)
-        else:
-            self.statusBar().showMessage("Please open an image to use a model tool.", 3000)
+        # Update export button
+        self.export_button.setText(f"Export for {self.current_model_info['name']}")
+        self.export_button.setDisabled(False)
+        self.export_button.setStyleSheet("background-color: #D32F2F; color: #FFFFFF; padding: 8px 16px; border-radius: 4px;")
+
+        # Set the corresponding drawing tool in the viewer
+        tool_name = model_info.get('tool')
+        if tool_name:
+            active_viewer = self.tabs.currentWidget()
+            if isinstance(active_viewer, ImageViewer):
+                active_viewer.set_tool(tool_name)
+                self.statusBar().showMessage(f"Activated tool: {tool_name}", 3000)
+            else:
+                self.statusBar().showMessage("Please open an image to use a model tool.", 3000)
 
     def add_images_to_project(self):
         """Opens a dialog to select multiple images and copies them to the project."""
@@ -303,6 +325,58 @@ class MainWindow(QMainWindow):
         self.models_menu.clear()
         self.models_menu.setDisabled(True)
         self.current_active_label = None
+        self.current_model_info = None
+        self.export_button.setText("Export")
+        self.export_button.setDisabled(True)
+        self.export_button.setStyleSheet("background-color: #A0A0A0; color: #FFFFFF; padding: 8px 16px; border-radius: 4px;")
+
+    def handle_export(self):
+        """Handles the full export workflow."""
+        if not self.current_model_info:
+            QMessageBox.warning(self, "No Model Selected", "Please select a model from the 'Models' menu first.")
+            return
+
+        if not self.project_manager.is_project_active():
+            QMessageBox.warning(self, "No Project Active", "Cannot export without an active project.")
+            return
+            
+        # 1. Ask for output directory
+        output_dir = QFileDialog.getExistingDirectory(self, "Select Output Directory", os.path.expanduser("~"), QFileDialog.ShowDirsOnly | QFileDialog.DontUseNativeDialog)
+        
+        if not output_dir:
+            return # User cancelled
+
+        # 2. Gather all annotations from the project
+        all_annotations = []
+        annotation_dir = self.project_manager.get_annotation_dir()
+        for filename in os.listdir(annotation_dir):
+            if filename.endswith(".json"):
+                file_path = os.path.join(annotation_dir, filename)
+                try:
+                    with open(file_path, 'r') as f:
+                        data = json.load(f)
+                        all_annotations.append(data)
+                except Exception as e:
+                    print(f"Could not read or parse annotation file {filename}: {e}")
+        
+        if not all_annotations:
+            QMessageBox.information(self, "No Annotations", "There are no annotations in this project to export.")
+            return
+
+        # 3. Get class map
+        class_labels = self.annotation_panel.get_class_labels()
+        class_map = {label: i for i, label in enumerate(class_labels)}
+
+        # 4. Call the exporter
+        try:
+            model_name = self.current_model_info['name']
+            exporter.export_annotations(all_annotations, output_dir, model_name, class_map)
+            
+            # 5. Show success message
+            QMessageBox.information(self, "Export Complete", f"Annotations successfully exported for {model_name} to:\n{output_dir}")
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", f"An error occurred during export: {e}")
 
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts for the main window."""
@@ -349,10 +423,18 @@ class MainWindow(QMainWindow):
 
     def _save_annotations_for_viewer(self, viewer):
         if not (viewer and self.project_manager.is_project_active()): return
-        image_path = viewer.property("image_path")
-        if image_path:
+        
+        image_path, image_w, image_h = viewer.get_image_details()
+        
+        if image_path and image_w > 0 and image_h > 0:
             image_filename = os.path.basename(image_path)
-            self.project_manager.save_annotations(image_filename, viewer.annotations)
+            self.project_manager.save_annotations(
+                image_filename, 
+                viewer.annotations, 
+                image_path, 
+                image_w, 
+                image_h
+            )
 
     def load_annotations_for_viewer(self, viewer, image_path):
         if not self.project_manager.is_project_active(): return

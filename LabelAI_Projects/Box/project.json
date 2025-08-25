@@ -1,5 +1,15 @@
 {
     "annotation_task": "Bounding Box",
-    "open_files": [],
-    "class_labels": []
+    "open_files": [
+        "C:\\LabelAI\\LabelAI_Projects\\Box\\images\\WIN_20241121_16_54_42_Pro.jpg",
+        "C:\\LabelAI\\LabelAI_Projects\\Box\\images\\WIN_20241125_09_59_55_Pro.jpg",
+        "C:\\LabelAI\\LabelAI_Projects\\Box\\images\\WIN_20241126_14_18_59_Pro.jpg",
+        "C:\\LabelAI\\LabelAI_Projects\\Box\\images\\WIN_20241202_10_06_05_Pro.jpg",
+        "C:\\LabelAI\\LabelAI_Projects\\Box\\images\\WIN_20250703_15_52_12_Pro.jpg",
+        "C:\\LabelAI\\LabelAI_Projects\\Box\\images\\WIN_20250813_00_04_31_Pro.jpg"
+    ],
+    "class_labels": [
+        "Person",
+        "Books"
+    ]
 }

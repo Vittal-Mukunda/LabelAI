@@ -183,39 +183,102 @@ class ProjectManager:
             print(f"Error deleting project '{project_name}': {e}")
             return False
 
-    def save_annotations(self, image_filename, annotations):
-        """Saves annotations for a specific image to a JSON file."""
+    def save_annotations(self, image_filename, annotations, image_path, image_width, image_height):
+        """Saves annotations for a specific image using the neutral JSON schema."""
         if not self.is_project_active(): return
         
         annotation_dir = self.get_annotation_dir()
-        # Create a JSON filename from the image filename, e.g., "cat.jpg" -> "cat.jpg.json"
-        annotation_filename = f"{image_filename}.json"
+        annotation_filename = f"{os.path.splitext(image_filename)[0]}.json"
         annotation_path = os.path.join(annotation_dir, annotation_filename)
+
+        # Convert relative coordinates to absolute and keys to 'points'
+        abs_annotations = []
+        for ann in annotations:
+            new_ann = ann.copy()
+            coords = new_ann.pop('coords')
+            
+            if new_ann['type'] == 'bbox' and len(coords) == 4:
+                rel_x, rel_y, rel_w, rel_h = coords
+                x_min = int(rel_x * image_width)
+                y_min = int(rel_y * image_height)
+                x_max = int((rel_x + rel_w) * image_width)
+                y_max = int((rel_y + rel_h) * image_height)
+                new_ann['points'] = [x_min, y_min, x_max, y_max]
+            elif new_ann['type'] == 'polygon':
+                abs_points = []
+                for p in coords:
+                    abs_x = int(p[0] * image_width)
+                    abs_y = int(p[1] * image_height)
+                    abs_points.append([abs_x, abs_y])
+                new_ann['points'] = abs_points
+            
+            abs_annotations.append(new_ann)
+
+        # Create the final JSON structure
+        output_data = {
+            "image_path": image_path,
+            "image_height": image_height,
+            "image_width": image_width,
+            "annotations": abs_annotations
+        }
         
         try:
             with open(annotation_path, 'w') as f:
-                json.dump(annotations, f, indent=4)
+                json.dump(output_data, f, indent=4)
         except Exception as e:
             print(f"Error saving annotations for {image_filename}: {e}")
 
     def load_annotations(self, image_filename):
-        """Loads annotations for a specific image from a JSON file."""
+        """Loads annotations from the neutral JSON schema and converts them for the viewer."""
         if not self.is_project_active(): return []
 
         annotation_dir = self.get_annotation_dir()
-        annotation_filename = f"{image_filename}.json"
+        annotation_filename = f"{os.path.splitext(image_filename)[0]}.json"
         annotation_path = os.path.join(annotation_dir, annotation_filename)
 
         if not os.path.exists(annotation_path):
-            return [] # Return empty list if no annotation file exists
+            return []
 
         try:
             with open(annotation_path, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
         except Exception as e:
             print(f"Error loading annotations for {image_filename}: {e}")
             return []
 
+        image_width = data.get("image_width")
+        image_height = data.get("image_height")
+        
+        if not image_width or not image_height:
+            print(f"Warning: Image dimensions missing in {annotation_filename}. Cannot convert coordinates.")
+            # Attempt to return old format if it exists, otherwise empty.
+            return data if isinstance(data, list) else []
+
+        # Convert absolute coordinates back to relative for the viewer
+        relative_annotations = []
+        for ann in data.get("annotations", []):
+            new_ann = ann.copy()
+            points = new_ann.pop('points')
+
+            if new_ann['type'] == 'bbox' and len(points) == 4:
+                x_min, y_min, x_max, y_max = points
+                rel_x = x_min / image_width
+                rel_y = y_min / image_height
+                rel_w = (x_max - x_min) / image_width
+                rel_h = (y_max - y_min) / image_height
+                new_ann['coords'] = [rel_x, rel_y, rel_w, rel_h]
+            elif new_ann['type'] == 'polygon':
+                rel_points = []
+                for p in points:
+                    rel_x = p[0] / image_width
+                    rel_y = p[1] / image_height
+                    rel_points.append([rel_x, rel_y])
+                new_ann['coords'] = rel_points
+            
+            relative_annotations.append(new_ann)
+            
+        return relative_annotations
+            
     def delete_annotations(self, image_filename):
         """Deletes the annotation file for a given image."""
         if not self.is_project_active(): return

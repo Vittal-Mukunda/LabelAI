@@ -1,0 +1,10 @@
+{
+    "annotation_task": "Polygons / Masks",
+    "open_files": [
+        "C:\\LabelAI\\LabelAI_Projects\\Polygon\\images\\WIN_20250703_15_52_12_Pro.jpg",
+        "C:\\LabelAI\\LabelAI_Projects\\Polygon\\images\\WIN_20250813_00_04_31_Pro.jpg"
+    ],
+    "class_labels": [
+        "Vittal"
+    ]
+}
