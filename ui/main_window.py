@@ -14,6 +14,7 @@ from .welcome_screen import WelcomeScreen
 from .image_sidebar import ImageSidebar # Import the new sidebar
 from backend.model_manager import ModelManager
 from backend.project_manager import ProjectManager
+from backend.model_database import get_models_for_task
 from backend.yolo_inference import YOLOAdapter
 from backend.sam_inference import SAMAdapter
 
@@ -23,8 +24,7 @@ class MainWindow(QMainWindow):
         
         self.project_manager = ProjectManager(base_projects_dir="LabelAI_Projects")
         self.model_manager = ModelManager()
-        self.model_manager.register_model("YOLO", YOLOAdapter)
-        self.model_manager.register_model("SAM", SAMAdapter)
+        # Model registration is now dynamic
         
         self.current_active_label = None
         
@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
         
-        self.welcome_screen = WelcomeScreen(self.project_manager.base_dir)
+        self.welcome_screen = WelcomeScreen(self.project_manager)
         self.welcome_screen.projectSelected.connect(self.load_project_ui)
         
         self.main_widget = QWidget()
@@ -92,24 +92,78 @@ class MainWindow(QMainWindow):
         save_action.triggered.connect(self.save_all_annotations)
         self.file_menu.addAction(save_action)
         
-        # Other menus remain the same
-        self.tools_menu = menubar.addMenu("Tools")
-        #... (rest of menu setup)
+        # The "Tools" menu is removed, will be replaced by a dynamic "Models" menu
+        self.models_menu = menubar.addMenu("Models")
+        self.models_menu.setDisabled(True) # Disabled until a project is loaded
 
     def load_project_ui(self, project_name):
-        self.project_manager.open_or_create_project(project_name)
+        # Open the project directory and load its configuration
+        if not self.project_manager.open_project(project_name):
+            QMessageBox.critical(self, "Error", f"Failed to open project '{project_name}'.")
+            return
+
         self.setWindowTitle(f"LabelAI - {project_name}")
+        
+        # Load project state, which includes the annotation task
+        state = self.project_manager.load_state()
+        if not state or "annotation_task" not in state:
+            QMessageBox.critical(self, "Error", "Project is corrupted or missing its annotation task.")
+            # Potentially switch back to welcome screen
+            self.stack.setCurrentWidget(self.welcome_screen)
+            return
+
+        # Switch to the main UI
         self.stack.setCurrentWidget(self.main_widget)
         self.menuBar().setVisible(True)
+
+        # --- DYNAMIC UI SETUP BASED ON TASK ---
+        annotation_task = state.get("annotation_task")
+        self.update_models_menu(annotation_task)
         
         # Populate the sidebar with existing images
         self.image_sidebar.populate_from_directory(self.project_manager.get_image_dir())
         
-        state = self.project_manager.load_state()
+        # Load class labels and other state
         class_labels = state.get("class_labels", [])
         self.annotation_panel.load_class_labels(class_labels)
-        
         self.load_project_state(state)
+
+    def update_models_menu(self, task_name):
+        """Dynamically populates the Models menu based on the project's task."""
+        self.models_menu.clear()
+        self.models_menu.setDisabled(False)
+
+        models = get_models_for_task(task_name)
+        
+        if not models:
+            no_models_action = QAction("No models available for this task", self)
+            no_models_action.setDisabled(True)
+            self.models_menu.addAction(no_models_action)
+            return
+
+        # In a real scenario, you'd connect this to a function
+        # that activates the model and its corresponding tool.
+        for model_info in models:
+            model_action = QAction(model_info['name'], self)
+            model_action.triggered.connect(lambda checked, m=model_info: self.activate_model(m))
+            self.models_menu.addAction(model_action)
+
+    def activate_model(self, model_info):
+        """
+        Activates the selected model by setting the corresponding tool
+        in the current image viewer.
+        """
+        tool_name = model_info.get('tool')
+        if not tool_name:
+            QMessageBox.information(self, "Info", "This model does not have an associated drawing tool.")
+            return
+
+        active_viewer = self.tabs.currentWidget()
+        if isinstance(active_viewer, ImageViewer):
+            active_viewer.set_tool(tool_name)
+            self.statusBar().showMessage(f"Activated tool: {tool_name}", 3000)
+        else:
+            self.statusBar().showMessage("Please open an image to use a model tool.", 3000)
 
     def add_images_to_project(self):
         """Opens a dialog to select multiple images and copies them to the project."""

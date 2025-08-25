@@ -15,17 +15,42 @@ class ProjectManager:
     def is_project_active(self):
         return self.current_project_path is not None
 
-    def open_or_create_project(self, name):
+    def create_project(self, name, annotation_task):
+        """
+        Creates a new project with a specified annotation task.
+        Initializes directory structure and the project.json state file.
+        """
+        project_path = os.path.join(self.base_dir, name)
+        
+        if os.path.exists(project_path):
+            print(f"Error: Project '{name}' already exists.")
+            return None
+
+        # Create project structure
+        os.makedirs(project_path)
+        os.makedirs(os.path.join(project_path, "images"))
+        os.makedirs(os.path.join(project_path, "annotations"))
+        
+        # Initialize project state file with the annotation task
+        initial_state = {"annotation_task": annotation_task}
+        self.current_project_path = project_path # Temporarily set path to save state
+        self.save_state(initial_state)
+        self.current_project_path = None # Reset after saving
+
+        print(f"Project '{name}' created with task '{annotation_task}'")
+        return project_path
+
+    def open_project(self, name):
+        """
+        Opens an existing project and loads its state.
+        """
         project_path = os.path.join(self.base_dir, name)
         
         if not os.path.exists(project_path):
-            os.makedirs(project_path)
-            os.makedirs(os.path.join(project_path, "images"))
-            os.makedirs(os.path.join(project_path, "annotations"))
-            print(f"Project '{name}' created at '{project_path}'")
-        else:
-            print(f"Opening existing project '{name}'")
+            print(f"Error: Project '{name}' not found.")
+            return None
             
+        print(f"Opening existing project '{name}'")
         self.current_project_path = project_path
         self.current_project_name = name
         return project_path
@@ -45,13 +70,21 @@ class ProjectManager:
         return os.path.join(self.current_project_path, "project.json")
 
     def save_state(self, data):
-        """Saves the given data dictionary to project.json."""
+        """
+        Saves the given data dictionary to project.json, preserving existing keys
+        that are not present in the new data (like 'annotation_task').
+        """
         state_file = self._get_state_file_path()
         if not state_file: return
-        
+
         try:
+            # Read existing state first to preserve untouched values
+            existing_state = self.load_state()
+            # Update with new data
+            existing_state.update(data)
+            
             with open(state_file, 'w') as f:
-                json.dump(data, f, indent=4)
+                json.dump(existing_state, f, indent=4)
             print(f"Project state saved to {state_file}")
         except Exception as e:
             print(f"Error saving project state: {e}")

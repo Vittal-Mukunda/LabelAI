@@ -2,15 +2,18 @@
 
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QListWidget,
-                             QPushButton, QInputDialog, QHBoxLayout, QFrame)
+                             QPushButton, QHBoxLayout, QFrame, QDialog)
 from PyQt5.QtCore import Qt, pyqtSignal
+
+from .new_project_dialog import NewProjectDialog
+from backend.project_manager import ProjectManager
 
 class WelcomeScreen(QWidget):
     projectSelected = pyqtSignal(str)
 
-    def __init__(self, projects_dir, parent=None):
+    def __init__(self, project_manager: ProjectManager, parent=None):
         super().__init__(parent)
-        self.projects_dir = projects_dir
+        self.project_manager = project_manager
         self.setObjectName("WelcomeScreen")
 
         # Main layout that centers the content
@@ -66,17 +69,23 @@ class WelcomeScreen(QWidget):
 
     def refresh_project_list(self):
         self.project_list.clear()
-        if not os.path.exists(self.projects_dir):
-            os.makedirs(self.projects_dir)
-
-        for item in os.listdir(self.projects_dir):
-            if os.path.isdir(os.path.join(self.projects_dir, item)):
-                self.project_list.addItem(item)
+        projects = self.project_manager.list_projects()
+        self.project_list.addItems(projects)
 
     def create_new_project(self):
-        project_name, ok = QInputDialog.getText(self, "New Project", "Enter project name:")
-        if ok and project_name:
-            self.projectSelected.emit(project_name)
+        existing_projects = self.project_manager.list_projects()
+        dialog = NewProjectDialog(existing_projects, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            project_name, annotation_task = dialog.get_project_details()
+            
+            # Create the project using the manager
+            project_path = self.project_manager.create_project(project_name, annotation_task)
+            
+            if project_path:
+                self.refresh_project_list()
+                # Now open the newly created project
+                self.projectSelected.emit(project_name)
 
     def open_selected_project(self):
         selected_items = self.project_list.selectedItems()
