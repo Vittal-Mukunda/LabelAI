@@ -1,7 +1,5 @@
 {
-    "annotation_task": "Polygons / Masks",
+    "annotation_task": "Bounding Box",
     "open_files": [],
-    "class_labels": [
-        "vittal"
-    ]
+    "class_labels": []
 }

@@ -169,62 +169,117 @@ QScrollBar::add-line, QScrollBar::sub-line {
 }
 
 /* --------------------------------------------------- */
-/* Welcome Screen :: Modern Look                       */
+/* Welcome Screen :: Split View Dashboard              */
 /* --------------------------------------------------- */
 
 #WelcomeScreen {
-    background-color: #1A1A1A;
-    font-family: "Baskerville", "Times New Roman", serif;
+    font-family: "Segoe UI", "Roboto", sans-serif;
 }
 
-#WelcomeScreen #container {
-    background-color: #2C2C2E;
-    border: 1px solid #3A3A3C;
-    border-radius: 12px;
+/* --- Panels --- */
+#actionHub {
+    background-color: #1A1A1A; /* Slightly darker for contrast */
 }
 
-#WelcomeScreen #titleLabel {
-    font-size: 32px;
+#projectBrowser {
+    background-color: #1C1C1E;
+}
+
+/* --- Typography --- */
+#appTitle {
+    font-size: 28px;
     font-weight: 600;
     color: #FFFFFF;
-    margin-bottom: 5px;
+    padding-bottom: 10px;
 }
 
-#WelcomeScreen #subtitleLabel {
+#sectionTitle, #browserTitle {
     font-size: 16px;
-    color: #8E8E93; /* Muted grey */
-    margin-bottom: 20px;
+    font-weight: 600;
+    color: #F2F2F7;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #3A3A3C;
+    padding-bottom: 8px;
 }
 
-#WelcomeScreen QListWidget {
-    border: 1px solid #3A3A3C;
-    border-radius: 6px;
-    background-color: #1C1C1E;
-    font-size: 15px;
-}
-
-#WelcomeScreen QListWidget::item {
-    padding: 12px;
-}
-
+/* --- Buttons & Inputs --- */
 #WelcomeScreen QPushButton {
-    background-color: #3D3D40;
-    color: #FFFFFF;
+    text-align: left;
+    padding: 12px;
     font-size: 14px;
-    font-weight: 500;
-    border: none;
-    border-radius: 6px;
-    padding: 10px 16px;
-}
-
-#WelcomeScreen QPushButton:hover {
-    background-color: #4D4D50;
 }
 
 #WelcomeScreen #primaryButton {
     background-color: #0A84FF;
+    color: #FFFFFF;
+    font-weight: 600;
 }
 
 #WelcomeScreen #primaryButton:hover {
     background-color: #0A60FF;
+}
+
+#WelcomeScreen QLineEdit {
+    background-color: #2C2C2E;
+    border: 1px solid #3A3A3C;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #F2F2F7;
+}
+
+#WelcomeScreen QLineEdit:focus {
+    border: 1px solid #0A84FF;
+}
+
+/* --- Lists --- */
+#WelcomeScreen QListWidget {
+    border: none;
+    background-color: transparent;
+}
+
+#recent_projects_list::item {
+    padding: 10px;
+    border-radius: 4px;
+}
+#recent_projects_list::item:hover {
+    background-color: #2C2C2E;
+}
+#recent_projects_list::item:selected {
+    background-color: #3A3A3C;
+    color: #FFFFFF;
+}
+
+#projectCardList {
+    background-color: #1C1C1E;
+}
+
+/* Override general item styling for the card list */
+#projectCardList::item {
+    border: none;
+    padding: 4px 0; /* Add a little vertical space between cards */
+}
+#projectCardList::item:selected {
+    background-color: transparent; /* Selection is handled by the card's hover */
+    border: none;
+}
+
+/* --- Project Card --- */
+#taskIcon {
+    font-size: 20px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background-color: #0A84FF; /* Blue icon background */
+    border-radius: 8px;
+}
+
+#projectName {
+    font-size: 16px;
+    font-weight: 500;
+    color: #F2F2F7;
+}
+
+#projectMeta {
+    font-size: 12px;
+    color: #8E8E93; /* Muted grey for metadata */
 }

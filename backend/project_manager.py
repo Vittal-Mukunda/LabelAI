@@ -2,7 +2,8 @@
 
 import os
 import json
-
+import shutil
+from datetime import datetime
 class ProjectManager:
     def __init__(self, base_projects_dir="LabelAI_Projects"):
         self.base_dir = os.path.abspath(base_projects_dir)
@@ -111,6 +112,76 @@ class ProjectManager:
     def list_projects(self):
         """Returns a list of all project names."""
         return [d for d in os.listdir(self.base_dir) if os.path.isdir(os.path.join(self.base_dir, d))]
+
+    def get_project_details(self, project_name):
+        """Gathers detailed information about a specific project."""
+        project_path = os.path.join(self.base_dir, project_name)
+        if not os.path.isdir(project_path):
+            return None
+
+        details = {
+            "name": project_name,
+            "path": project_path,
+            "annotation_task": "Unknown",
+            "image_count": 0,
+            "last_modified": None
+        }
+
+        # Get last modified date
+        try:
+            mod_time = os.path.getmtime(project_path)
+            details["last_modified"] = datetime.fromtimestamp(mod_time)
+        except OSError:
+            pass
+
+        # Get image count
+        images_dir = os.path.join(project_path, "images")
+        if os.path.isdir(images_dir):
+            details["image_count"] = len([f for f in os.listdir(images_dir) if os.path.isfile(os.path.join(images_dir, f))])
+
+        # Get annotation task from project.json
+        project_json_path = os.path.join(project_path, "project.json")
+        if os.path.exists(project_json_path):
+            try:
+                with open(project_json_path, 'r') as f:
+                    data = json.load(f)
+                    details["annotation_task"] = data.get("annotation_task", "Unknown")
+            except (json.JSONDecodeError, IOError):
+                pass
+        
+        return details
+
+    def get_all_project_details(self):
+        """Returns detailed information for all projects, sorted by name."""
+        projects = self.list_projects()
+        all_details = [self.get_project_details(p) for p in projects]
+        # Filter out any None results in case a project directory is invalid
+        all_details = [d for d in all_details if d is not None]
+        # Sort by project name alphabetically
+        all_details.sort(key=lambda x: x['name'])
+        return all_details
+
+    def get_recent_projects(self, count=5):
+        """Returns the most recently modified projects."""
+        all_details = self.get_all_project_details()
+        # Sort by last_modified date, descending
+        all_details.sort(key=lambda x: x['last_modified'], reverse=True)
+        return all_details[:count]
+
+    def delete_project(self, project_name):
+        """Permanently deletes a project directory and all its contents."""
+        project_path = os.path.join(self.base_dir, project_name)
+        if not os.path.isdir(project_path):
+            print(f"Error: Project '{project_name}' not found for deletion.")
+            return False
+        
+        try:
+            shutil.rmtree(project_path)
+            print(f"Project '{project_name}' deleted successfully.")
+            return True
+        except OSError as e:
+            print(f"Error deleting project '{project_name}': {e}")
+            return False
 
     def save_annotations(self, image_filename, annotations):
         """Saves annotations for a specific image to a JSON file."""
