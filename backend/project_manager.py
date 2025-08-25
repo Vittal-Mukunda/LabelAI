@@ -54,6 +54,12 @@ class ProjectManager:
         self.current_project_path = project_path
         self.current_project_name = name
         return project_path
+
+    def close_project(self):
+        """Closes the current project, resetting the manager's state."""
+        self.current_project_path = None
+        self.current_project_name = None
+        print("Project closed.")
         
     def get_image_dir(self):
         if not self.is_project_active(): return None
@@ -138,3 +144,18 @@ class ProjectManager:
         except Exception as e:
             print(f"Error loading annotations for {image_filename}: {e}")
             return []
+
+    def delete_annotations(self, image_filename):
+        """Deletes the annotation file for a given image."""
+        if not self.is_project_active(): return
+
+        annotation_dir = self.get_annotation_dir()
+        annotation_filename = f"{image_filename}.json"
+        annotation_path = os.path.join(annotation_dir, annotation_filename)
+
+        if os.path.exists(annotation_path):
+            try:
+                os.remove(annotation_path)
+                print(f"Deleted annotation file: {annotation_path}")
+            except OSError as e:
+                print(f"Error deleting annotation file {annotation_path}: {e}")

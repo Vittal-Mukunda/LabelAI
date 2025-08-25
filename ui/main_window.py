@@ -57,6 +57,7 @@ class MainWindow(QMainWindow):
         self.image_sidebar = ImageSidebar()
         self.image_sidebar.addImagesClicked.connect(self.add_images_to_project)
         self.image_sidebar.imageSelected.connect(self.open_image_tab)
+        self.image_sidebar.imagesDeleted.connect(self.delete_images)
 
         # 2. Nested splitter for the main work area
         work_area_splitter = QSplitter(Qt.Horizontal)
@@ -91,12 +92,21 @@ class MainWindow(QMainWindow):
         save_action = QAction(style.standardIcon(QStyle.SP_DialogSaveButton), "Save All Annotations", self)
         save_action.triggered.connect(self.save_all_annotations)
         self.file_menu.addAction(save_action)
+
+        self.file_menu.addSeparator()
+
+        back_to_projects_action = QAction(style.standardIcon(QStyle.SP_ArrowBack), "Back to Projects", self)
+        back_to_projects_action.triggered.connect(self.prompt_save_and_return_to_welcome)
+        self.file_menu.addAction(back_to_projects_action)
         
         # The "Tools" menu is removed, will be replaced by a dynamic "Models" menu
         self.models_menu = menubar.addMenu("Models")
         self.models_menu.setDisabled(True) # Disabled until a project is loaded
 
     def load_project_ui(self, project_name):
+        # Reset UI from any previous project
+        self.reset_project_ui()
+
         # Open the project directory and load its configuration
         if not self.project_manager.open_project(project_name):
             QMessageBox.critical(self, "Error", f"Failed to open project '{project_name}'.")
@@ -191,6 +201,35 @@ class MainWindow(QMainWindow):
             
             QMessageBox.information(self, "Success", f"Added {copied_count} new image(s) to the project.")
 
+    def delete_images(self, image_paths):
+        """Deletes image files and their corresponding annotation files."""
+        if not self.project_manager.is_project_active(): return
+
+        deleted_count = 0
+        for path in image_paths:
+            # Close the tab if the image is open
+            for i in range(self.tabs.count()):
+                if self.tabs.widget(i).property("image_path") == path:
+                    self.tabs.removeTab(i)
+                    break
+            
+            # Delete the image file
+            try:
+                os.remove(path)
+                deleted_count += 1
+            except OSError as e:
+                print(f"Error deleting image file {path}: {e}")
+                continue
+
+            # Delete the corresponding annotation file
+            filename = os.path.basename(path)
+            self.project_manager.delete_annotations(filename)
+
+        if deleted_count > 0:
+            QMessageBox.information(self, "Success", f"Deleted {deleted_count} image(s).")
+            # Refresh the sidebar to show the updated list of images
+            self.image_sidebar.populate_from_directory(self.project_manager.get_image_dir())
+
     def open_image_tab(self, path):
         """Opens an image from a given path (called by the sidebar)."""
         if path and os.path.exists(path):
@@ -227,6 +266,54 @@ class MainWindow(QMainWindow):
             print("Project saved. Closing application.")
         
         event.accept()
+
+    def prompt_save_and_return_to_welcome(self):
+        """Asks the user if they want to save before returning to the welcome screen."""
+        if not self.project_manager.is_project_active():
+            self.return_to_welcome_screen()
+            return
+
+        reply = QMessageBox.question(self, "Save Changes?",
+                                     "Do you want to save your changes before returning to the project list?",
+                                     QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                                     QMessageBox.Save)
+
+        if reply == QMessageBox.Save:
+            self.save_all_annotations()
+            self.save_project_state()
+            self.return_to_welcome_screen()
+        elif reply == QMessageBox.Discard:
+            self.return_to_welcome_screen()
+        else: # Cancel
+            pass
+
+    def return_to_welcome_screen(self):
+        """Resets the UI and switches back to the welcome screen."""
+        self.reset_project_ui()
+        self.stack.setCurrentWidget(self.welcome_screen)
+        self.menuBar().setVisible(False)
+        self.setWindowTitle("LabelAI")
+        self.project_manager.close_project() # Add a method to formally close the project
+
+    def reset_project_ui(self):
+        """Clears all project-specific UI elements."""
+        self.tabs.clear()
+        self.annotation_panel.clear_all()
+        self.image_sidebar.clear_all()
+        self.models_menu.clear()
+        self.models_menu.setDisabled(True)
+        self.current_active_label = None
+
+    def keyPressEvent(self, event):
+        """Handle keyboard shortcuts for the main window."""
+        key = event.key()
+        
+        # Shortcut for selecting class labels with number keys 1-9
+        if Qt.Key_1 <= key <= Qt.Key_9:
+            index = key - Qt.Key_1
+            self.annotation_panel.select_label_by_index(index)
+        else:
+            super().keyPressEvent(event)
 
     # --- Other methods like on_active_label_changed, set_active_tool, etc. remain largely the same ---
     # Minor changes might be needed to adapt to the new auto-save logic.

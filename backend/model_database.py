@@ -2,18 +2,16 @@
 
 """
 Centralized database for all supported AI models.
-
 This file acts as a single source of truth for which models are available
 for each specific annotation task. This allows for dynamic UI generation
 and a scalable way to add new models.
 """
 
 # Define constants for the main annotation tasks
-OBJECT_DETECTION = "Object Detection Models"
-SEGMENTATION = "Segmentation Models"
-TRACKING = "Tracking Models"
-POSE_KEYPOINTS = "Pose / Keypoints Models"
-FOUNDATION_VLM = "Foundation / Vision-Language Models"
+BOUNDING_BOX = "Bounding Box"
+POLYGONS_MASKS = "Polygons / Masks"
+KEYPOINTS = "Keypoints"
+OBJECT_IDS = "Object IDs"
 
 # The core model database
 # Each key is a task category, and the value is a list of model dictionaries.
@@ -22,38 +20,37 @@ FOUNDATION_VLM = "Foundation / Vision-Language Models"
 #   - 'adapter': The class name of the adapter responsible for its inference.
 #   - 'tool': The name of the drawing tool associated with this model.
 MODEL_DATABASE = {
-    OBJECT_DETECTION: [
-        {
-            "name": "YOLOv8",
-            "adapter": "YOLOAdapter",
-            "tool": "bbox"
-        },
-        {
-            "name": "Detectron2",
-            "adapter": "Detectron2Adapter", # Hypothetical future adapter
-            "tool": "bbox"
-        }
+    BOUNDING_BOX: [
+        {"name": "YOLOv8", "adapter": "YOLOAdapter", "tool": "bbox"},
+        {"name": "RetinaNet", "adapter": "RetinaNetAdapter", "tool": "bbox"},
+        {"name": "Faster R-CNN", "adapter": "FasterRCNNAdapter", "tool": "bbox"},
+        {"name": "EfficientDet", "adapter": "EfficientDetAdapter", "tool": "bbox"},
+        {"name": "SSD", "adapter": "SSDAdapter", "tool": "bbox"},
+        {"name": "GroundingDINO / OWL-ViT", "adapter": "GroundingDINOAdapter", "tool": "bbox"},
     ],
-    SEGMENTATION: [
-        {
-            "name": "Segment Anything (SAM)",
-            "adapter": "SAMAdapter",
-            "tool": "MagicWand" # This tool is not yet implemented in the viewer
-        },
-        {
-            "name": "Mask R-CNN",
-            "adapter": "MaskRCNNAdapter", # Hypothetical
-            "tool": "polygon"
-        }
+    POLYGONS_MASKS: [
+        {"name": "Mask R-CNN", "adapter": "MaskRCNNAdapter", "tool": "polygon"},
+        {"name": "DeepLabv3+", "adapter": "DeepLabv3Adapter", "tool": "polygon"},
+        {"name": "U-Net", "adapter": "UNetAdapter", "tool": "polygon"},
+        {"name": "SegFormer", "adapter": "SegFormerAdapter", "tool": "polygon"},
+        {"name": "Segment Anything (SAM)", "adapter": "SAMAdapter", "tool": "MagicWand"},
+        {"name": "Detectron2", "adapter": "Detectron2Adapter", "tool": "polygon"},
+        {"name": "MMDetection", "adapter": "MMDetectionAdapter", "tool": "polygon"},
     ],
-    TRACKING: [
-        # To be populated in the future
+    KEYPOINTS: [
+        {"name": "OpenPose", "adapter": "OpenPoseAdapter", "tool": "keypoint"},
+        {"name": "HRNet", "adapter": "HRNetAdapter", "tool": "keypoint"},
+        {"name": "MediaPipe Pose", "adapter": "MediaPipePoseAdapter", "tool": "keypoint"},
+        {"name": "PoseTrack", "adapter": "PoseTrackAdapter", "tool": "keypoint"},
     ],
-    POSE_KEYPOINTS: [
-        # To be populated in the future
-    ],
-    FOUNDATION_VLM: [
-        # To be populated in the future
+    OBJECT_IDS: [
+        {"name": "DeepSORT", "adapter": "DeepSORTAdapter", "tool": "bbox"},
+        {"name": "ByteTrack", "adapter": "ByteTrackAdapter", "tool": "bbox"},
+        {"name": "BoT-SORT", "adapter": "BoTSORTAdapter", "tool": "bbox"},
+        {"name": "FairMOT", "adapter": "FairMOTAdapter", "tool": "bbox"},
+        {"name": "CenterTrack", "adapter": "CenterTrackAdapter", "tool": "bbox"},
+        {"name": "TraDeS / QDTrack", "adapter": "TraDeSAdapter", "tool": "bbox"},
+        {"name": "PoseTrack", "adapter": "PoseTrackAdapter", "tool": "keypoint"},
     ]
 }
 

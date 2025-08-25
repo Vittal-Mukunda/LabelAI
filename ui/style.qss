@@ -72,6 +72,26 @@ QListWidget::item:selected {
     border-left: 3px solid #0A84FF;
 }
 
+/* --- Buttons --- */
+QPushButton {
+    background-color: #2C2C2E;
+    color: #F2F2F7;
+    border: 1px solid #3A3A3C;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #3A3A3C;
+    border-color: #4A4A4C;
+}
+
+QPushButton:pressed {
+    background-color: #1C1C1E;
+}
+
 /* --- Menus --- */
 QMenuBar {
     background-color: #1C1C1E;

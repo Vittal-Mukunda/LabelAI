@@ -121,3 +121,15 @@ class AnnotationPanel(QWidget):
     def load_class_labels(self, labels):
         self.label_list.clear()
         self.label_list.addItems(labels)
+
+    def select_label_by_index(self, index):
+        """Selects a class label in the list by its numerical index."""
+        if 0 <= index < self.label_list.count():
+            self.label_list.setCurrentRow(index)
+
+    def clear_all(self):
+        """Resets the panel to its initial state."""
+        self.label_list.clear()
+        self.annotation_list.clear()
+        self.current_annotations = []
+        self.new_label_input.clear()
